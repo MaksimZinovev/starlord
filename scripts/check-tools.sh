@@ -24,17 +24,32 @@ else
   LOG PHASE0 FAIL "gh CLI not authenticated"
 fi
 
-# Ollama (optional)
+# Ollama (optional) — check local and cloud independently
+OLLAMA_LOCAL=0
+OLLAMA_CLOUD=0
 OLLAMA_MODE="unavailable"
+
 if command -v ollama &>/dev/null && ollama list &>/dev/null 2>&1; then
   MODELS=$(ollama list 2>/dev/null | tail -n +2 | head -3 | awk '{print $1}' | tr '\n' ',' | sed 's/,$//')
   echo "  ✅ Ollama local  — $MODELS"
-  OLLAMA_MODE="local"
+  OLLAMA_LOCAL=1
   LOG PHASE0 OK "Ollama local available: $MODELS"
-elif [ -n "${OLLAMA_API_KEY:-}" ]; then
+fi
+
+if [ -n "${OLLAMA_API_KEY:-}" ]; then
   echo "  ✅ Ollama cloud  — API key set"
-  OLLAMA_MODE="cloud"
+  OLLAMA_CLOUD=1
   LOG PHASE0 OK "Ollama cloud available (API key set)"
+fi
+
+if [ $OLLAMA_LOCAL -eq 1 ] && [ $OLLAMA_CLOUD -eq 1 ]; then
+  echo "  ⚠️  Both Ollama local and cloud available — agent must ask user which to prefer."
+  echo "     Local: free, no latency. Cloud: pay per token, larger models, any machine."
+  LOG PHASE0 INFO "Both Ollama local and cloud available — agent must ask user preference"
+elif [ $OLLAMA_LOCAL -eq 1 ]; then
+  OLLAMA_MODE="local"
+elif [ $OLLAMA_CLOUD -eq 1 ]; then
+  OLLAMA_MODE="cloud"
 else
   echo "  ❌ Ollama        — not available (main LLM will handle classification)"
   LOG PHASE0 WARN "Ollama not available, main LLM will handle classification"

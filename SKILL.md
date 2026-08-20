@@ -32,6 +32,11 @@ Run `scripts/check-tools.sh {task-dir}` to detect what is available. The script 
 
 If Ollama and DeepWiki are both missing, warn the user that the main LLM will handle all analysis (higher token usage) and ask for confirmation.
 
+If both Ollama local and Ollama cloud are available, ask the user which to prefer:
+- **Ollama local** — zero cost, but limited to models installed on the machine. Faster if already running.
+- **Ollama cloud** — pay per token, but access to larger/cheaper models. Works from any machine.
+Recommend local if available (free, no network latency). Record the choice in the execution log.
+
 The check results determine which pipeline path each phase takes. Read `references/pipeline-detail.md` for the full decision tree of fallbacks.
 
 ---
