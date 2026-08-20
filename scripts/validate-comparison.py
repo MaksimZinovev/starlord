@@ -10,8 +10,17 @@ Checks:
   5. File integrity — all referenced files exist
 Output: PASS/FAIL to stdout, details to stderr.
 """
-import sys, os, json, re, glob
+import sys, os, json, re, glob, datetime
 from pathlib import Path
+
+LOG_FILE = None
+
+def log(status, msg):
+    if LOG_FILE:
+        ts = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        with open(LOG_FILE, "a") as f:
+            f.write(f"[{ts}] [PHASE5] [{status}] {msg}\n")
+
 
 def load_goal(task_dir):
     """Extract criteria + weights from goal.md."""
@@ -98,6 +107,8 @@ def main():
         sys.exit(1)
 
     task_dir = sys.argv[1]
+    global LOG_FILE
+    LOG_FILE = os.path.join(task_dir, "run.log")
     if not os.path.isdir(task_dir):
         print(f"ERROR: task dir not found: {task_dir}", file=sys.stderr)
         sys.exit(1)
@@ -159,13 +170,15 @@ def main():
         print(f"❌ {e}")
 
     if errors:
+        log("FAIL", f"{len(errors)} errors, {len(warnings)} warnings")
         print("\nVALIDATION: FAIL — fix errors before trusting the recommendation")
         sys.exit(1)
     else:
         if warnings:
             print("\nVALIDATION: PASS (with warnings)")
         else:
-            print("\nVALIDATION: PASS")
+            log("OK", f"PASS, {len(sourced)}/{total_claims} claims sourced, {len(warnings)} warnings")
+        print("\nVALIDATION: PASS")
         sys.exit(0)
 
 if __name__ == "__main__":

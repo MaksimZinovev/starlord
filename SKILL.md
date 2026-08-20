@@ -20,7 +20,7 @@ Scripts handle deterministic work (pulling data, filtering, validation). The mai
 
 ## Phase 0: Tool Availability Check
 
-Run `scripts/check-tools.sh` to detect what is available. The script prints a status report. Announce results to the user before proceeding.
+Run `scripts/check-tools.sh {task-dir}` to detect what is available. The script prints a status report. Announce results to the user before proceeding.
 
 ```
 ✅ gh CLI        — authenticated as @username
@@ -71,7 +71,7 @@ Show the user the locked criteria table and ask: "Start searching your stars?" T
 
 ### 2.1 Pull Star List
 
-Run `scripts/pull-stars.sh` to fetch the user's starred repos. The script uses a shared cache at `~/.cache/starsieve/raw-stars.json`. Pass `--refresh` to force a re-pull.
+Run `scripts/pull-stars.sh {task-dir}` to fetch the user's starred repos. The script uses a shared cache at `~/.cache/starsieve/raw-stars.json`. Pass `--refresh` to force a re-pull.
 
 Output: `{task-dir}/candidates-raw.json` with all starred repos (name, description, topics, language, stars, pushed_at, license).
 
@@ -83,7 +83,7 @@ If the filtered pool has fewer than 3 repos, expand to GitHub search API (`gh ap
 
 ### 2.3 Semantic Classification
 
-If Ollama is available, run `scripts/classify-candidates.py` which sends each candidate's metadata to a cheap Ollama model with the prompt: "Given the goal '{goal}', is this repo relevant? Y/N + one-line reason." Keep the top 8-12 candidates.
+If Ollama is available, run `scripts/classify-candidates.py {task-dir} {candidates-raw.json} "{goal}"` which sends each candidate's metadata to a cheap Ollama model with the prompt: "Given the goal '{goal}', is this repo relevant? Y/N + one-line reason." Keep the top 8-12 candidates.
 
 If Ollama is NOT available, the main LLM classifies candidates from the pre-filtered pool. This costs more tokens but works.
 
@@ -194,7 +194,8 @@ Save the validated comparison to `{task-dir}/comparison.md` (copy structure from
 │   └── {repo}_facts.json
 ├── comparison.md           ← fit check matrix + scores + recommendation
 ├── gaps.md                 ← known unknowns, missing data
-└── validation.txt          ← validation script output
+├── validation.txt          ← validation script output
+└── run.log                 ← execution log (all phases, timestamps, tool choices)
 ```
 
 ---
@@ -207,3 +208,36 @@ Save the validated comparison to `{task-dir}/comparison.md` (copy structure from
 - **Star list empty or too small:** Expand to GitHub search API. Announce the expansion.
 - **Validation fails:** Show specific failures. Fix unsourced claims or missing facts. Re-run validation.
 - **Script permission error:** Run `chmod +x scripts/*.sh scripts/*.py`. Scripts should be executable.
+---
+
+## Execution Log
+
+Every phase appends structured entries to `{task-dir}/run.log`. The log answers questions like: "Was Ollama local or cloud used?", "Which phase failed?", "How long did each step take?"
+
+Format: `[timestamp] [PHASE] [STATUS] message`
+
+| Phase | What gets logged |
+|-------|-----------------|
+| PHASE0 | Tool availability results (gh, Ollama local/cloud, DeepWiki, jq) |
+| PHASE1 | Criteria locked (count, priorities) — logged by agent |
+| PHASE2 | Cache hit/miss, repo count pulled, Ollama mode used, candidates kept |
+| PHASE3 | Per-repo metadata pulled (stars, license), DeepWiki vs Ollama fallback, gaps found |
+| PHASE4 | Matrix built, scores calculated — logged by agent |
+| PHASE5 | Validation result (PASS/FAIL, claim count, warnings) |
+
+### Agent Logging Responsibility
+
+The agent must log at these points (scripts log their own steps automatically):
+
+1. **After Phase 1 (criteria locked):** Call `scripts/log.sh {task-dir} PHASE1 OK "{N} criteria locked, priorities: {list}"`
+2. **At each checkpoint:** Call `scripts/log.sh {task-dir} CHECKPOINT{N} OK "user approved {what}"` or `... ADJUSTED "user changed {what}"`
+3. **After Phase 4 (comparison built):** Call `scripts/log.sh {task-dir} PHASE4 OK "matrix built, {N} candidates ranked"`
+4. **On any fallback:** Call `scripts/log.sh {task-dir} {PHASE} FALLBACK "{what fell back, why}"` — e.g., "DeepWiki unavailable for {repo}, used Ollama"
+
+### Reading the Log
+
+At any point, the agent can read `{task-dir}/run.log` to answer user questions about execution:
+- "What tools were used?" — grep `PHASE0` entries
+- "Did Ollama cloud or local run?" — grep for `Ollama local` or `Ollama cloud`
+- "Any failures?" — grep for `FAIL` or `WARN` or `FALLBACK`
+- "How many repos were pulled?" — grep `PHASE2` for repo count

@@ -3,11 +3,13 @@
 # Usage: pull-meta.sh {task-dir} {owner/repo}
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TASK_DIR="$1"
 REPO="$2"
 SLUG=$(echo "$REPO" | tr '/' '_')
 META_DIR="$TASK_DIR/meta"
 mkdir -p "$META_DIR"
+LOG() { bash "$SCRIPT_DIR/log.sh" "$TASK_DIR" "$@"; }
 
 # Pull repo metadata
 gh api "repos/$REPO" --jq '{
@@ -31,6 +33,7 @@ gh api "repos/$REPO" --jq '{
 gh api "repos/$REPO/readme" --jq '.content' 2>/dev/null | base64 -d > "$META_DIR/${SLUG}_readme.md" 2>/dev/null || {
   echo "WARNING: Could not fetch README for $REPO" >&2
   echo "(no README)" > "$META_DIR/${SLUG}_readme.md"
+  LOG PHASE3 WARN "no README for $REPO"
 }
 
 # Pull latest release info
@@ -50,5 +53,6 @@ if command -v jq &>/dev/null; then
     mv "$META_DIR/${SLUG}_meta.tmp" "$META_DIR/${SLUG}_meta.json"
 fi
 
+LOG PHASE3 OK "metadata pulled for $REPO (stars: $(jq .stargazers_count "$META_DIR/${SLUG}_meta.json"), license: $(jq -r .license "$META_DIR/${SLUG}_meta.json"))"
 echo "Saved metadata for $REPO → $META_DIR/${SLUG}_meta.json"
 echo "Saved README for $REPO → $META_DIR/${SLUG}_readme.md"
