@@ -46,17 +46,26 @@ flowchart TD
 
 From a real run: comparing browser automation tools for a CI pipeline.
 
-**Locked criteria** (goal + weighted requirements):
+<details>
+<summary>Locked criteria (goal + weighted requirements)</summary>
 
 ![Criteria locking](assets/examples/criteria-locking.jpg)
 
-**Weighted scores** (all candidates scored against criteria):
+</details>
+
+<details>
+<summary>Weighted scores (all candidates scored against criteria)</summary>
 
 ![Weighted scores](assets/examples/weighted-scores.jpg)
 
-**Recommendation** (top 3 with trade-offs and integration path):
+</details>
+
+<details>
+<summary>Recommendation (top 3 with trade-offs and integration path)</summary>
 
 ![Recommendation](assets/examples/recommendation.jpg)
+
+</details>
 
 ## Token economy
 
