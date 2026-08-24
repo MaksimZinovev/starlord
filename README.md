@@ -42,6 +42,22 @@ flowchart TD
 5. Get a fit check matrix, weighted scores, and a ranked recommendation. Every claim links to a source.
 6. A script validates that every ✅ in the matrix traces to a real fact.
 
+## Examples
+
+From a real run: comparing browser automation tools for a CI pipeline.
+
+**Locked criteria** (goal + weighted requirements):
+
+![Criteria locking](assets/examples/criteria-locking.jpg)
+
+**Weighted scores** (all candidates scored against criteria):
+
+![Weighted scores](assets/examples/weighted-scores.jpg)
+
+**Recommendation** (top 3 with trade-offs and integration path):
+
+![Recommendation](assets/examples/recommendation.jpg)
+
 ## Token economy
 
 Scripts pull data for free. Ollama filters and summarizes cheaply. Your main LLM only sees pre-digested facts, never a raw README.
