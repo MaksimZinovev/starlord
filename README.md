@@ -2,6 +2,13 @@
 
 Starlord helps you pick among GitHub repos you've already starred. Tell it what you need, answer a few questions, and it sifts your stars down to the best candidates. Facts, not vibes.
 
+## Design decisions
+
+- **Scripts do the grunt work.** Pulling stars, fetching metadata, filtering by keywords. All free, no tokens. The main LLM only sees pre-digested facts for 8-12 candidates, never a raw README.
+- **Every claim traces to a source.** A validation script checks that each ✅ in the matrix references a real fact file. No unsourced claims survive.
+- **Interactive grilling, not templates.** Criteria come from your actual goal through questions. No preset checklists. You lock 3-5 criteria with priorities and constraints before any repo is evaluated.
+- **Works with whatever tools you have.** `gh` CLI is required. Ollama, DeepWiki, and Sideshow are optional. The skill tells you exactly what path it takes when something is missing.
+
 ## Who it's for
 
 You have dozens or hundreds of starred repos and no system to compare them when you actually need to pick one.
