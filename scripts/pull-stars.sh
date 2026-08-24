@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TASK_DIR="${1:-.}"
 shift || true
 
-CACHE_DIR="${STARSIEVE_CACHE_DIR:-$HOME/.cache/starsieve}"
+CACHE_DIR="${STARLORD_CACHE_DIR:-$HOME/.cache/starlord}"
 CACHE_FILE="$CACHE_DIR/raw-stars.json"
 AGE_FILE="$CACHE_DIR/raw-stars.age"
 REFRESH=0

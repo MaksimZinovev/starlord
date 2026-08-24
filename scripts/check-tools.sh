@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Detect available tools for the starsieve pipeline.
+# Detect available tools for the starlord pipeline.
 # Prints a status report to stdout. Exits 0 if gh is authenticated.
 # Usage: check-tools.sh [task-dir]  (task-dir optional, enables logging)
 set -euo pipefail

@@ -18,25 +18,27 @@ Full decision tree for each phase, including fallback paths.
 ## Cache Lifecycle
 
 ```
-~/.cache/starsieve/raw-stars.json   ← shared across all projects
-~/.cache/starsieve/raw-stars.age    ← timestamp of last pull
+~/.cache/starlord/raw-stars.json   ← shared across all projects
+~/.cache/starlord/raw-stars.age    ← timestamp of last pull
 ```
 
 - Default freshness: 24 hours
 - `--refresh` flag: force re-pull regardless of age
-- Env override: `STARSIEVE_CACHE_DIR=/custom/path`
+- Env override: `STARLORD_CACHE_DIR=/custom/path`
 - First run: pulls all stars (20 API calls for 2000 stars, ~5-10s)
 - Subsequent runs: instant (reads cache)
-- If cache corrupted: delete `~/.cache/starsieve/` and re-run
+- If cache corrupted: delete `~/.cache/starlord/` and re-run
 
 ## Phase 2: Keyword Filter Logic
 
 The script filters by matching goal keywords against:
+
 - `description` field (case-insensitive substring match)
 - `topics` array (exact match)
 - `language` field (exact match)
 
 Example: goal "state management library for React" filters for repos where:
+
 - description contains "state" OR "management" OR "react"
 - OR topics include "state-management" OR "react" OR "redux"
 - OR language is "TypeScript" OR "JavaScript"
@@ -48,14 +50,17 @@ If filtered pool < 3 repos: expand to `gh api search/repositories?q=...`
 For each candidate repo, the agent calls `deepwiki_ask_question` with criteria-specific questions.
 
 Example questions for criterion "theming support":
+
 - "Does this repo support custom themes? How is theming implemented?"
 - "Are there CSS variables, a theme provider, or a style override system?"
 
 Example questions for criterion "bundle size":
+
 - "What is the bundle size of this library? Is it tree-shakeable?"
 - "Does it support ESM imports for tree-shaking?"
 
 If DeepWiki returns "repo not indexed":
+
 1. Try `deepwiki_read_wiki_structure` to trigger indexing
 2. If still not available, fall back to Ollama reading README
 3. If no Ollama, fall back to main LLM reading README
@@ -100,6 +105,7 @@ Priority weights:
 ### Source Reference Format
 
 Every ✅ cell must include a bracketed reference to the source file:
+
 - `[meta/{repo-slug}_meta.json]` — for data pulled by script
 - `[facts/{repo-slug}_facts.json]` — for DeepWiki/Ollama answers
 - The validation script checks these references exist
@@ -107,6 +113,7 @@ Every ✅ cell must include a bracketed reference to the source file:
 ### Gap Marking
 
 A ❌ cell can be:
+
 - **Confirmed fail** — the repo genuinely doesn't meet the criterion (has a source)
 - **Gap** — could not determine (DeepWiki unavailable, no data). Mark with `[gaps.md]`
 

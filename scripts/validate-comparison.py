@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Validate a starsieve comparison against source facts.
+Validate a starlord comparison against source facts.
 Usage: validate-comparison.py {task-dir}
 Checks:
   1. Source tracing — every ✅ in the matrix references a fact in facts/ or meta/
@@ -10,7 +10,11 @@ Checks:
   5. File integrity — all referenced files exist
 Output: PASS/FAIL to stdout, details to stderr.
 """
-import sys, os, json, re, glob, datetime
+import sys
+import os
+import json
+import re
+import datetime
 from pathlib import Path
 
 LOG_FILE = None

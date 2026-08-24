@@ -1,9 +1,9 @@
 ---
-name: starsieve
+name: starlord
 description: Finds and compares GitHub repositories from the user starred list against custom criteria determined through interactive grilling. Use when selecting a library, tool, or framework from existing starred repos, when needing a systematic fact-grounded comparison of candidate repos. Don't use for general GitHub search, issue debugging, code review, or non-repo comparison tasks.
 ---
 
-# Starsieve
+# Starlord
 
 Sieve the user's GitHub stars down to the real candidates, then compare them against custom criteria — grounded in facts, not vibes.
 
@@ -33,6 +33,7 @@ Run `scripts/check-tools.sh {task-dir}` to detect what is available. The script 
 If Ollama and DeepWiki are both missing, warn the user that the main LLM will handle all analysis (higher token usage) and ask for confirmation.
 
 If both Ollama local and Ollama cloud are available, ask the user which to prefer:
+
 - **Ollama local** — zero cost, but limited to models installed on the machine. Faster if already running.
 - **Ollama cloud** — pay per token, but access to larger/cheaper models. Works from any machine.
 Recommend local if available (free, no network latency). Record the choice in the execution log.
@@ -45,16 +46,18 @@ The check results determine which pipeline path each phase takes. Read `referenc
 
 ### 1.1 Collect Goal
 
-Ask the user to state their goal, use case, or problem in one sentence. The user may optionally share additional context (files, links, pasted text). Save the goal to `./.starsieve/{task-slug}/goal.md`.
+Ask the user to state their goal, use case, or problem in one sentence. The user may optionally share additional context (files, links, pasted text). Save the goal to `./.starlord/{task-slug}/goal.md`.
 
 ### 1.2 Grill to Lock Criteria
 
 Ask 3-5 questions, one at a time. Each question:
+
 - Presents 2-4 options
 - Includes a recommended option with reasoning
 - Waits for the user's answer before asking the next question
 
 The questions should surface:
+
 - **Criteria** — what matters for this decision (e.g., "Does bundle size matter?" / "Is active maintenance critical?")
 - **Priorities** — weight each criterion (must-have, important, nice-to-have)
 - **Constraints** — hard limits (e.g., "must be MIT licensed", "must support React 19")
@@ -76,7 +79,7 @@ Show the user the locked criteria table and ask: "Start searching your stars?" T
 
 ### 2.1 Pull Star List
 
-Run `scripts/pull-stars.sh {task-dir}` to fetch the user's starred repos. The script uses a shared cache at `~/.cache/starsieve/raw-stars.json`. Pass `--refresh` to force a re-pull.
+Run `scripts/pull-stars.sh {task-dir}` to fetch the user's starred repos. The script uses a shared cache at `~/.cache/starlord/raw-stars.json`. Pass `--refresh` to force a re-pull.
 
 Output: `{task-dir}/candidates-raw.json` with all starred repos (name, description, topics, language, stars, pushed_at, license).
 
@@ -103,6 +106,7 @@ Show the user the 8-12 candidate repos with a one-line relevance reason each. As
 ### 3.1 Pull Metadata
 
 Run `scripts/pull-meta.sh {repo-owner/repo-name}` for each candidate. The script pulls via `gh api`:
+
 - Description, stars, forks, watchers
 - License, language, topics
 - Last push date, open/closed issue counts
@@ -136,6 +140,7 @@ Show the user compact fact cards per repo + any gaps found. Ask: "Proceed to com
 ### 4.1 Build Fit Check Matrix
 
 Read `references/pipeline-detail.md` section "Fit Check Format" for the exact table structure. The matrix has:
+
 - **Rows:** locked criteria (with priority weights)
 - **Columns:** candidate repos
 - **Cells:** ✅ (pass, with sourced fact) or ❌ (fail, with reason)
@@ -174,6 +179,7 @@ Output: PASS or FAIL with specific issues. If FAIL, fix the flagged issues and r
 ### Final Output
 
 Save the validated comparison to `{task-dir}/comparison.md` (copy structure from `assets/comparison.template.md`). The final output includes:
+
 - The goal and locked criteria
 - The fit check matrix with sourced facts
 - Weighted scores and ranked recommendation
@@ -185,10 +191,10 @@ Save the validated comparison to `{task-dir}/comparison.md` (copy structure from
 ## File Structure
 
 ```
-~/.cache/starsieve/
+~/.cache/starlord/
 ├── raw-stars.json          ← cached star list (shared across projects)
 
-./.starsieve/{task-slug}/
+./.starlord/{task-slug}/
 ├── goal.md                 ← user goal + locked criteria
 ├── candidates-raw.json     ← all stars (pre-filter)
 ├── candidates.json         ← filtered 8-12 candidates
@@ -213,6 +219,7 @@ Save the validated comparison to `{task-dir}/comparison.md` (copy structure from
 - **Star list empty or too small:** Expand to GitHub search API. Announce the expansion.
 - **Validation fails:** Show specific failures. Fix unsourced claims or missing facts. Re-run validation.
 - **Script permission error:** Run `chmod +x scripts/*.sh scripts/*.py`. Scripts should be executable.
+
 ---
 
 ## Execution Log
@@ -242,6 +249,7 @@ The agent must log at these points (scripts log their own steps automatically):
 ### Reading the Log
 
 At any point, the agent can read `{task-dir}/run.log` to answer user questions about execution:
+
 - "What tools were used?" — grep `PHASE0` entries
 - "Did Ollama cloud or local run?" — grep for `Ollama local` or `Ollama cloud`
 - "Any failures?" — grep for `FAIL` or `WARN` or `FALLBACK`

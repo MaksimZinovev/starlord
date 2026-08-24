@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Append a structured entry to the task run log.
 # Usage: log.sh {task-dir} {PHASE} {STATUS} {message...}
-# Example: log.sh ./.starsieve/my-task PHASE0 OK "gh authenticated as @user"
-#          log.sh ./.starsieve/my-task PHASE2 FALLBACK "Ollama unavailable, LLM classifying"
+# Example: log.sh ./.starlord/my-task PHASE0 OK "gh authenticated as @user"
+#          log.sh ./.starlord/my-task PHASE2 FALLBACK "Ollama unavailable, LLM classifying"
 set -euo pipefail
 
 TASK_DIR="$1"

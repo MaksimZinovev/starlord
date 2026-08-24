@@ -1,60 +1,85 @@
-# Starsieve
+# Starlord
 
-Starsieve is an agent skill that helps you pick among GitHub repos you've already starred. Tell it what you need, it asks a few questions, then sifts your stars and compares the best candidates against your criteria — using facts, not vibes.
+Starlord helps you pick among GitHub repos you've already starred. Tell it what you need, answer a few questions, and it sifts your stars down to the best candidates. Facts, not vibes.
 
-## Why
+## Who it's for
 
-You star repos thinking "I'll use this someday." Then you need to pick one and face 2000+ stars with no system to compare them. Reading every README costs time and tokens. Starsieve fixes this: scripts pull data, a cheap model filters noise, and your main LLM only sees pre-digested facts for 8-12 candidates.
+You have dozens or hundreds of starred repos and no system to compare them when you actually need to pick one.
+
+Good for:
+- Choosing a state management library, testing framework, or UI component kit
+- Comparing two similar tools you starred months ago and forgot why
+- Narrowing a broad category like "a Go web framework" to 3-5 real candidates
 
 ## Tool availability
 
 | Tool | Required | Role | If missing |
 |------|----------|------|------------|
 | `gh` CLI | Yes | Pull stars, metadata, READMEs | Skill cannot run |
-| Ollama | No | Classify candidates, summarize READMEs | Main LLM does it (more tokens) |
-| DeepWiki | No | Deep architecture questions | Ollama/LLM reads README instead |
-| Sideshow | No | Visual checkpoint cards | Checkpoints in plain chat |
-| `jq` | No | JSON parsing in scripts | Falls back to Python |
-
-Checked at startup. The skill tells you exactly what path it takes.
+| Ollama | No | Classify, summarize | Main LLM does it |
+| DeepWiki | No | Architecture questions | Ollama/LLM reads README |
+| Sideshow | No | Visual checkpoints | Plain chat |
+| `jq` | No | JSON parsing | Falls back to Python |
 
 ## Pipeline
 
 ```mermaid
 flowchart TD
-    G[User states goal in 1 sentence] --> Q[Agent asks 3-5 questions\nwith options + recommendation]
-    Q --> C[Criteria locked: 3-5 items]
-    C --> CP1{Checkpoint 1}
-    CP1 --> S[Script: pull starred repos\ncached locally]
-    S --> F[Script: keyword filter]
-    F --> O[Ollama: classify, keep top 8-12]
-    O --> CP2{Checkpoint 2}
-    CP2 --> M[Script: pull metadata + README]
-    M --> D[DeepWiki/Ollama: answer\ncriteria questions per repo]
-    D --> CP3{Checkpoint 3}
-    CP3 --> L[Main LLM: fit check matrix\n+ scored recommendation]
-    L --> CP4{Checkpoint 4}
-    CP4 --> V[Script: validate claims\ntrace to sourced facts]
-    V --> R[Final: comparison.md + gaps.md]
+    A[You state your goal] --> B[Answer questions to lock criteria]
+    B --> C[Sift starred repos to 8-12 candidates]
+    C --> D[Gather facts per candidate]
+    D --> E[Compare against your criteria]
+    E --> F[Validate every claim]
+    F --> G[Get a ranked recommendation]
 ```
 
-## How it works — your perspective
+## How it works
 
-1. **Say what you need.** One sentence: "I need a state management library for React."
-2. **Answer 3-5 questions.** One at a time, each with options and a recommendation. This locks criteria, priorities, and constraints.
-3. **Approve candidates.** 8-12 relevant repos with a one-line reason each. Remove, add, or expand.
-4. **Review facts.** Compact fact cards per repo, plus any gaps where data was missing.
-5. **Get a comparison.** Fit check matrix (✅/❌ per criterion), weighted scores, ranked recommendation. Every claim links to a source.
-6. **Validation.** Script checks every ✅ traces to a real fact — no unsourced claims survive.
+1. Say what you need. One sentence.
+2. Answer 3-5 questions, each with options and a recommendation. This locks your criteria, priorities, and constraints.
+3. Approve 8-12 candidates, each with a one-line reason.
+4. Review fact cards per repo and any gaps.
+5. Get a fit check matrix, weighted scores, and a ranked recommendation. Every claim links to a source.
+6. A script validates that every ✅ in the matrix traces to a real fact.
 
 ## Token economy
 
-Scripts (free) pull data. Ollama (cheap) filters and summarizes. Main LLM only reads pre-digested facts. Your main model never sees a raw README or irrelevant repo.
+Scripts pull data for free. Ollama filters and summarizes cheaply. Your main LLM only sees pre-digested facts, never a raw README.
 
-## Install
+## Quick start
 
+1. Install and authenticate:
 ```bash
-ln -s ~/repos/starsieve ~/.pi/agent/skills/starsieve
+ln -s ~/repos/starlord ~/.pi/agent/skills/starlord
+gh auth login
 ```
 
-Requires `gh auth login`. Optional: Ollama, DeepWiki MCP, Sideshow.
+2. Tell the agent what you need:
+
+   > I need a state management library for React
+
+Starlord asks a few questions, sifts your stars, and hands you a validated comparison.
+
+## Sample output
+
+Each run creates a task folder with the full comparison and its evidence:
+
+```
+.starlord/react-state-management/
+├── goal.md               your goal + locked criteria
+├── candidates-raw.json   all stars (pre-filter)
+├── candidates.json       filtered 8-12 candidates
+├── meta/
+│   ├── reduxjs_redux_meta.json
+│   ├── reduxjs_redux_readme.md
+│   └── ...
+├── facts/
+│   ├── zustand_facts.json
+│   └── ...
+├── comparison.md         fit check matrix + scores + recommendation
+├── gaps.md               known unknowns, missing data
+├── validation.txt        validation script output
+└── run.log               execution log
+```
+
+The deliverable is `comparison.md`. Everything else is traceable evidence behind it.
