@@ -200,7 +200,7 @@ Run `scripts/validate-comparison.py {task-dir}` to verify the comparison:
 | ----------------- | -------------------------------------------------------------- |
 | Source tracing    | Every ✅✅, ✅ and ⚠️ cell references a fact in `facts/` or `meta/` |
 | Completeness      | Every candidate has fact or meta files                         |
-| Tier rules        | A ❌ on a Must-have eliminates the repo. Eliminated repos get no ranking score |
+| Tier rules        | A ❌ on a Must-have eliminates the repo. Rule IDs and priorities must match goal.md. Eliminated repos get no ranking score |
 | Score consistency | Ranking scores recompute from the matrix: rule weight × mark points |
 | Gap transparency  | Every ❌ is listed in `gaps.md`                                 |
 | Validator report  | `validator-report.json` exists and its verdict is approved      |

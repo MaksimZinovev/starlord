@@ -5,8 +5,9 @@ Usage: validate-comparison.py {task-dir}
 Checks:
   1. Source tracing — every ✅✅, ✅ and ⚠️ cell references a fact in facts/ or meta/
   2. Completeness — every candidate has fact or meta files
-  3. Tier rules — a ❌ on a must-have eliminates the candidate. Eliminated candidates
-     stay in the matrix but get no ranking score.
+  3. Tier rules — a ❌ on a must-have eliminates the candidate. The matrix's rule IDs
+     and priorities must match goal.md. Eliminated candidates stay in the matrix but
+     get no ranking score.
   4. Score consistency — ranking scores recompute from the matrix: rule weight x mark points
      (✅✅=1.0, ✅=0.7, ⚠️=0.3, ❌=0.0). Mismatch fails the run.
   5. Gap transparency — every ❌ is listed in gaps.md. ⚠️ is a pass, not a gap.
@@ -17,6 +18,7 @@ Output: PASS/FAIL to stdout, details to stderr.
 """
 
 import json
+import math
 import os
 import re
 import sys
@@ -25,6 +27,10 @@ from pathlib import Path
 
 # Check ✅✅ before ✅. One ✅ is a substring of ✅✅, so order matters.
 MARK_ORDER = ["✅✅", "✅", "⚠️", "❌"]
+# Some editors and copy-paste round trips drop U+FE0F from the warning mark,
+# leaving a bare U+26A0. Cells are matched without the variation selector; the
+# returned mark keeps the canonical form used by MARK_POINTS.
+VS16 = "\ufe0f"
 MARK_POINTS = {"✅✅": 1.0, "✅": 0.7, "⚠️": 0.3, "❌": 0.0}
 PASS_MARKS = {"✅✅", "✅", "⚠️"}
 SOURCE_MARKS = {"✅✅", "✅", "⚠️"}
@@ -57,7 +63,7 @@ def is_separator(cells):
 
 
 def load_goal(task_dir):
-    """Extract criteria + priorities from goal.md."""
+    """Extract rule IDs, names and priorities from goal.md, keyed by rule ID."""
     goal_file = Path(task_dir) / "goal.md"
     if not goal_file.exists():
         print("ERROR: goal.md not found", file=sys.stderr)
@@ -70,7 +76,7 @@ def load_goal(task_dir):
             # The Exceeds Definitions table also keys on rule IDs. Keep the first
             # occurrence per rule, which is the Locked Criteria table.
             criteria.setdefault(cells[0], {"name": cells[1], "priority": cells[2]})
-    return list(criteria.values())
+    return criteria
 
 
 def load_facts(task_dir):
@@ -100,9 +106,15 @@ def load_meta(task_dir):
 
 
 def extract_mark(cell):
-    """Return the rating mark in a cell. ✅✅ is tested before ✅."""
+    """Return the rating mark in a cell. ✅✅ is tested before ✅.
+
+    The cell is matched without U+FE0F variation selectors, so a bare
+    U+26A0 warning mark reads as the full form. The returned mark keeps
+    the canonical shape used by MARK_POINTS.
+    """
+    plain = cell.replace(VS16, "")
     for mark in MARK_ORDER:
-        if mark in cell:
+        if mark.replace(VS16, "") in plain:
             return mark
     return None
 
@@ -209,9 +221,11 @@ def parse_ranking_table(comp_text):
 
 def _to_float(text):
     try:
-        return float(text)
+        value = float(text)
     except (TypeError, ValueError):
         return None
+    # nan and inf compare equal under abs() and would pass the score check.
+    return value if math.isfinite(value) else None
 
 
 def check_gaps(task_dir, failed_rule_ids):
@@ -296,6 +310,29 @@ def main():
             "No candidates found in comparison.md (header must read "
             "| Req | Requirement | Priority | ... |)"
         )
+
+    # 2. Goal cross-check — the matrix must carry the same rule IDs and priorities
+    #    as goal.md, so a priority downgrade cannot smuggle a candidate back in.
+    matrix_priority = {
+        rule_id: priority_text for rule_id, priority_text, _cells in matrix["rows"]
+    }
+    missing = sorted(set(criteria) - set(matrix_priority))
+    extra = sorted(set(matrix_priority) - set(criteria))
+    if missing:
+        errors.append(
+            f"Rules in goal.md but missing from the matrix: {', '.join(missing)}"
+        )
+    if extra:
+        errors.append(f"Rules in the matrix but not in goal.md: {', '.join(extra)}")
+    for rule_id in sorted(set(criteria) & set(matrix_priority)):
+        goal_weight = normalize_priority(criteria[rule_id]["priority"])
+        matrix_weight = normalize_priority(matrix_priority[rule_id])
+        if goal_weight != matrix_weight:
+            errors.append(
+                f"Priority mismatch on {rule_id}: the matrix says "
+                f"'{matrix_priority[rule_id]}' but goal.md says "
+                f"'{criteria[rule_id]['priority']}'"
+            )
 
     # 2. Rate every cell, collect claims and tier outcomes
     ratings = {}  # candidate -> {rule_id: mark}
