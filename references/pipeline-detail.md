@@ -68,53 +68,104 @@ If DeepWiki returns "repo not indexed":
 
 ## Fit Check Format
 
+The matrix rates every candidate against every locked rule with four marks:
+
+| Mark | Points | Meaning |
+|------|--------|---------|
+| ✅✅ | 1.0 | clearly better than needed |
+| ✅ | 0.7 | fine |
+| ⚠️ | 0.3 | passes with real problems |
+| ❌ | 0.0 | fails |
+
+Every ✅✅, ✅ and ⚠️ cell carries a cited fact. A ❌ cell needs no fact but must appear in gaps.md. Rate cells against the exceeds definitions in goal.md. See `references/rubric-examples.md` for worked examples of exceeds and meets lines.
+
 ```markdown
 ## Fit Check
 
 | Req | Requirement | Priority | Repo-A | Repo-B | Repo-C |
 |-----|-------------|----------|--------|--------|--------|
-| R0 | Bundle size under 10kb | Must-have | ✅ [meta/repo-a_meta.json] | ❌ | ✅ [meta/repo-c_meta.json] |
-| R1 | Active maintenance (push < 6mo) | Important | ✅ [meta/repo-a_meta.json] | ✅ [meta/repo-b_meta.json] | ❌ [gaps.md] |
-| R2 | TypeScript types included | Must-have | ✅ [facts/repo-a_facts.json] | ✅ [facts/repo-b_facts.json] | ✅ [facts/repo-c_facts.json] |
-
-**Weighted Scores:**
-| Repo | Score | Rank |
-|------|-------|------|
-| Repo-A | 3.0 | 🥇 |
-| Repo-B | 2.0 | 🥈 |
-| Repo-C | 2.0 | 🥉 |
-
-**Priority weights:** Must-have=1.0, Important=0.7, Nice-to-have=0.4
+| R0 | Bundle size under 10kb | Must-have | ✅✅ [meta/repo-a_meta.json] 4.2kb gzipped | ✅ [meta/repo-b_meta.json] 7.9kb gzipped | ❌ [gaps.md] |
+| R1 | Runs on the runner | Must-have | ✅✅ [facts/repo-a_facts.json] fully self-contained | ✅ [facts/repo-b_facts.json] cloud-API, rule allows it | ✅ [facts/repo-c_facts.json] self-contained |
+| R2 | TypeScript types included | Must-have | ✅ [facts/repo-a_facts.json] ships its own types | ✅ [facts/repo-b_facts.json] ships its own types | ⚠️ [facts/repo-c_facts.json] types via separate package |
 
 **Notes:**
-- Repo-C fails R1: last push was 14 months ago [meta/repo-c_meta.json]
-- Repo-A ✅ R0: 4.2kb gzipped [meta/repo-a_meta.json]
+- Repo-C fails R0: unpacked size is 240kb [meta/repo-c_meta.json]
+- Repo-A exceeds R0: 4.2kb gzipped, less than half the limit [meta/repo-a_meta.json]
 ```
 
-### Scoring Formula
+### Worked Example
 
+Two candidates in the browser agent spike passed every must-have rule. Binary scoring tied them at 3.8. The ranking score separates them:
+
+| Req | Weight | Playwright | Cloudflare Browser Run |
+|-----|--------|------------|------------------------|
+| R0 Wrappable | 1.0 | ✅✅ (1.00) SDK + MCP + CLI | ✅✅ (1.00) REST + MCP + CDP |
+| R1 Runs on runner | 1.0 | ✅✅ (1.00) runs locally, zero external deps | ✅ (0.70) cloud-API tool, the rule allows it |
+| R2 Maintenance | 0.7 | ✅ (0.49) actively maintained | ✅ (0.49) actively maintained |
+| R3 Lightweight | 0.7 | ✅ (0.49) 300MB+ browser download | ✅✅ (0.70) zero browser download |
+| R4 TS/JS native | 0.4 | ✅✅ (0.40) pure TypeScript | ✅ (0.28) TS-compatible, browser is remote |
+| **Ranking total** | | **3.38** | **3.17** |
+
+The gap is 3.38 − 3.17 = 0.21. That is within 1.0, so this is a close call: state the gap and hand the call to the user.
+
+### Scoring formula
+
+Scoring runs in two stages.
+
+**Stage 1: filter score.** Pass or fail per rule, unchanged. ✅✅, ✅ and ⚠️ pass. ❌ fails. A candidate that fails any Must-have rule is eliminated. It stays in the matrix, marked eliminated, and gets no ranking score.
+
+**Stage 2: ranking score.** Every candidate that passes all Must-have rules gets a ranking score:
+
+```text
+ranking score = Σ (rule weight × mark points)
+
+Mark points:      ✅✅=1.0, ✅=0.7, ⚠️=0.3, ❌=0.0
+Priority weights: Must-have=1.0, Important=0.7, Nice-to-have=0.4
 ```
-score = Σ (priority_weight × {✅=1, ❌=0})
 
-Priority weights:
-  Must-have  = 1.0
-  Important  = 0.7
-  Nice-to-have = 0.4
-```
+The point values come from the Phase 2 table in `shaping/starlord-scoring-limitation-analysis.md`. This section is the locked home for those numbers.
 
-### Source Reference Format
+A repo that merely meets every rule scores 70% of the possible points. Only a repo that exceeds everywhere reaches the maximum. Compare scores only within one run.
 
-Every ✅ cell must include a bracketed reference to the source file:
+### Close-call rule
 
-- `[meta/{repo-slug}_meta.json]` — for data pulled by script
-- `[facts/{repo-slug}_facts.json]` — for DeepWiki/Ollama answers
-- The validation script checks these references exist
+When #1 and #2 are within 1.0 points, state the gap and hand the call to the user. When the gap is larger, name the winner and the facts that decide it.
 
-### Gap Marking
+### Conformance guard (Phase 4.4)
+
+Before Checkpoint 4, check the rated matrix against the rule text:
+
+1. If a separate validator is available (sub-agent, peer-agent, RLM or similar, detected in Phase 0), send it the locked criteria text, the exceeds definitions, and the rated matrix.
+2. If no separate validator is available, run the same checklist as self critique.
+3. The checklist: flag every rating that contradicts what a rule explicitly allows. The known mistake class is a constraint the user relaxed during grilling, smuggled back into the rating. Example: ⚠️ on a rule whose text explicitly allows cloud-API tools.
+4. Fix every flagged rating and rerun the guard until the verdict is approved.
+
+Every guard run writes `{task-dir}/validator-report.json`, next to goal.md, from `templates/validator-report.template.json`:
+
+| Field | Content |
+|-------|---------|
+| mode | "peer-review" or "self-critique" |
+| peerAgent | the peer agent's name, when mode is "peer-review", otherwise null |
+| findings | flagged ratings, empty list when none |
+| reasoning | concise reason for the verdict |
+| verdict | "approved" or "rejected" |
+| timestamp | ISO 8601 with timezone offset |
+
+The Phase 5 script fails the run when this file is missing or when the verdict is not approved. This applies in both guard modes.
+
+### Source reference format
+
+Every ✅✅, ✅ and ⚠️ cell must include a bracketed reference to the source file:
+
+- `[meta/{repo-slug}_meta.json]` for data pulled by script
+- `[facts/{repo-slug}_facts.json]` for DeepWiki, Ollama, or LLM answers
+- The validation script checks that these references exist
+
+### Gap marking
 
 A ❌ cell can be:
 
-- **Confirmed fail** — the repo genuinely doesn't meet the criterion (has a source)
-- **Gap** — could not determine (DeepWiki unavailable, no data). Mark with `[gaps.md]`
+- **Confirmed fail**, the repo genuinely does not meet the rule, with a source
+- **Gap**, could not determine (DeepWiki unavailable, no data), marked with `[gaps.md]`
 
-Both types must appear in `gaps.md`, but gaps specifically note "unknown — no data available."
+Both types must appear in `gaps.md`, but gaps specifically note "unknown, no data available". ⚠️ is a pass with real problems. It is not a gap and never lands in gaps.md as one.

@@ -1,0 +1,10 @@
+{
+    "dateUpdated": "2026-09-13T00:00:00Z",
+    "description": "Conformance guard report for Phase 4.4. The validator (or the agent in self-critique mode) checks every rating against the rule text and writes this file into the task directory. The validation script fails the run when this file is missing or when verdict is not approved.",
+    "mode": "self-critique",
+    "peerAgent": null,
+    "findings": [],
+    "reasoning": "Checked every rating against the rule text and the exceeds definitions. No rating contradicts what a rule explicitly allows.",
+    "verdict": "approved",
+    "timestamp": "2026-09-13T21:00:00+10:00"
+}

@@ -1,0 +1,32 @@
+{
+    "dateUpdated": "2024-06-19T12:00:00Z",
+    "description": "This template checks the availability of required tools before proceeding to the next phase of the pipeline.",
+    "ghCli": {
+        "description": "Check if GitHub CLI is available in the environment.",
+        "command": "check-tools.sh [task-dir]  (task-dir optional, enables logging)",
+        "isAvailable": false,
+        "details": ""
+    },
+    "ollama": {
+        "description": "Check if Ollama is available in the environment.",
+        "command": "check-tools.sh [task-dir]  (task-dir optional, enables logging)",
+        "isAvailable": false,
+        "details": ""
+    },
+    "jq": {
+        "description": "Check if jq is available in the environment.",
+        "command": "check-tools.sh [task-dir]  (task-dir optional, enables logging)",
+        "isAvailable": false
+    },
+    "deepWiki": {
+        "description": "Check if deepWiki is available in the environment.",
+        "command": "LLM agent checks if deepWiki is available in current harness.",
+        "isAvailable": false
+    },
+    "validatorAgent": {
+        "description": "Check if validatorAgent is available in the environment. LLM agent checks if any of the following is available in the current harness: sub-agent, peer-agent, RLM or similar mechanism which ensures that the validator agent will be separate from the current agent and LLM (not biased)",
+        "command": "LLM agent checks the harness for a sub-agent, peer-agent, RLM or similar mechanism that keeps the validator separate from the current agent and LLM. check-tools.sh does not detect this.",
+        "isAvailable": false,
+        "details": ""
+    }
+}
