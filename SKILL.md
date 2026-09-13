@@ -2,7 +2,6 @@
 name: starlord
 description: Finds and compares GitHub repositories from the user starred list against custom criteria determined through interactive grilling. Use when selecting a library, tool, or framework from existing starred repos, when needing a systematic fact-grounded comparison of candidate repos. Don't use for general GitHub search, issue debugging, code review, or non-repo comparison tasks.
 ---
-
 # Starlord
 
 Sieve the user's GitHub stars down to the real candidates, then compare them against custom criteria — grounded in facts, not vibes.
@@ -15,12 +14,13 @@ Scripts handle deterministic work (pulling data, filtering, validation). The mai
 
 - **Mandatory:** `gh` CLI authenticated (`gh auth login`). The skill cannot run without this.
 - **Optional:** Ollama (local or cloud), DeepWiki MCP, Sideshow, `jq`.
+- **Mandatory:**: created unique task directory for each run (e.g., `./.starlord/{task-slug}/`) to store intermediate files and logs. The skill will not run if the task directory already exists.
 
 ---
 
 ## Phase 0: Tool Availability Check
 
-Run `scripts/check-tools.sh {task-dir}` to detect what is available. The script prints a status report. Announce results to the user before proceeding.
+Run `scripts/check-tools.sh {task-dir}` to detect what is available. The script prints a status report. Check availability and announce results to the user before proceeding.
 
 ```
 ✅ gh CLI        — authenticated as @username
@@ -36,9 +36,11 @@ If both Ollama local and Ollama cloud are available, ask the user which to prefe
 
 - **Ollama local** — zero cost, but limited to models installed on the machine. Faster if already running.
 - **Ollama cloud** — pay per token, but access to larger/cheaper models. Works from any machine.
-Recommend local if available (free, no network latency). Record the choice in the execution log.
+  Recommend local if available (free, no network latency). Record the choice in the execution log.
 
 The check results determine which pipeline path each phase takes. Read `references/pipeline-detail.md` for the full decision tree of fallbacks.
+
+Checkpoint: before proceeding to the next phase, write tool availability information into `~/.cache/starlord/{project_name}-{timestamp}/tool-availability-check.json`. Use template from `templates/tool-availability-check.json`. Report to user: concise status of availability check, path to written file, and any faced issues. Wit for feedback before proceeding.
 
 ---
 
@@ -120,9 +122,7 @@ Saved to `{task-dir}/meta/{repo-slug}_meta.json`. Zero LLM tokens.
 For each criterion, gather a fact per candidate. The tool depends on availability:
 
 1. **DeepWiki available:** Use `deepwiki_ask_question` to ask criterion-specific questions per repo (e.g., "How does this repo handle theming?"). Save answers to `{task-dir}/facts/{repo-slug}_facts.json`.
-
 2. **DeepWiki NOT available, Ollama available:** Send README + package.json to Ollama with the criterion questions. Ollama summarizes and answers. Save to `facts/`.
-
 3. **Neither available:** Main LLM reads the pulled README and metadata, answers the criterion questions. Higher token cost.
 
 ### 3.3 Gap Detection
@@ -166,13 +166,14 @@ Show the user the fit check matrix + scores + ranked recommendation + gaps. Ask:
 
 Run `scripts/validate-comparison.py {task-dir}` to verify the comparison:
 
-| Check | What it verifies |
-|-------|-----------------|
-| Source tracing | Every ✅ in the matrix references a fact in `facts/` or `meta/` |
-| Completeness | Every candidate has facts for every criterion |
-| Score consistency | Weighted scores match the matrix arithmetic |
-| Gap transparency | Every ❌ or missing fact is listed in `gaps.md` |
-| File integrity | All referenced files exist in the task directory |
+
+| Check             | What it verifies                                               |
+| ----------------- | -------------------------------------------------------------- |
+| Source tracing    | Every ✅ in the matrix references a fact in`facts/` or `meta/` |
+| Completeness      | Every candidate has facts for every criterion                  |
+| Score consistency | Weighted scores match the matrix arithmetic                    |
+| Gap transparency  | Every ❌ or missing fact is listed in`gaps.md`                 |
+| File integrity    | All referenced files exist in the task directory               |
 
 Output: PASS or FAIL with specific issues. If FAIL, fix the flagged issues and re-run.
 
@@ -228,14 +229,15 @@ Every phase appends structured entries to `{task-dir}/run.log`. The log answers 
 
 Format: `[timestamp] [PHASE] [STATUS] message`
 
-| Phase | What gets logged |
-|-------|-----------------|
-| PHASE0 | Tool availability results (gh, Ollama local/cloud, DeepWiki, jq) |
-| PHASE1 | Criteria locked (count, priorities) — logged by agent |
-| PHASE2 | Cache hit/miss, repo count pulled, Ollama mode used, candidates kept |
+
+| Phase  | What gets logged                                                                   |
+| ------ | ---------------------------------------------------------------------------------- |
+| PHASE0 | Tool availability results (gh, Ollama local/cloud, DeepWiki, jq)                   |
+| PHASE1 | Criteria locked (count, priorities) — logged by agent                             |
+| PHASE2 | Cache hit/miss, repo count pulled, Ollama mode used, candidates kept               |
 | PHASE3 | Per-repo metadata pulled (stars, license), DeepWiki vs Ollama fallback, gaps found |
-| PHASE4 | Matrix built, scores calculated — logged by agent |
-| PHASE5 | Validation result (PASS/FAIL, claim count, warnings) |
+| PHASE4 | Matrix built, scores calculated — logged by agent                                 |
+| PHASE5 | Validation result (PASS/FAIL, claim count, warnings)                               |
 
 ### Agent Logging Responsibility
 

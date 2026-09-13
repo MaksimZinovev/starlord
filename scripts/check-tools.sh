@@ -59,6 +59,10 @@ fi
 echo "  ❓ DeepWiki      — agent must verify MCP connection"
 LOG PHASE0 INFO "DeepWiki: agent must verify MCP connection"
 
+# Validator agent (optional — can't detect from shell, agent must check)
+echo "  ❓ Validator agent  — agent must checks if any of the following is available in current harness - sub-agent, peer-agent, RLM or similar mechanism which ensures that validator agent will be separate from the current agent and LLM (not biased)."
+LOG PHASE0 INFO "Validator agent: agent must verify availability of sub-agent, peer-agent, RLM or similar mechanism"
+
 # Sideshow (optional — can't detect from shell, agent must check)
 echo "  ❓ Sideshow      — agent must verify connection"
 LOG PHASE0 INFO "Sideshow: agent must verify connection"

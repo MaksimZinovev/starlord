@@ -15,8 +15,6 @@ Full decision tree for each phase, including fallback paths.
 | jq | ✅ | Scripts use jq for JSON | None |
 | jq | ❌ | Scripts fall back to python3 for JSON parsing | None |
 
-Checkpoint: before proceeding to the next phase, write tool availability information into `~/.cache/starlord/{project_name}-{timestamp}/tool-availability-check.json`. Use template from `templates/tool-availability-check.json`. Report to user: concise status of availability check, path to written file, and any faced issues. Wit for feedback before proceeding.
-
 ## Cache Lifecycle
 
 ```
