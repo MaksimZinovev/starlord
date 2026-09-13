@@ -24,8 +24,8 @@
         "isAvailable": false
     },
     "validatorAgent": {
-        "description": "Check if validatorAgent is available in the environment. LLM agent checks if any of the following is available in current harness - sub-agent, peer-agent, RLM or similar mechanism which ensures that validator agent will be separate from the current agent and LLM (not biased)",
-        "command": "check-tools.sh [task-dir]  (task-dir optional, enables logging)",
+        "description": "Check if validatorAgent is available in the environment. LLM agent checks if any of the following is available in the current harness: sub-agent, peer-agent, RLM or similar mechanism which ensures that the validator agent will be separate from the current agent and LLM (not biased)",
+        "command": "LLM agent checks the harness for a sub-agent, peer-agent, RLM or similar mechanism that keeps the validator separate from the current agent and LLM. check-tools.sh does not detect this.",
         "isAvailable": false,
         "details": ""
     }
