@@ -15,6 +15,7 @@ Checks:
   7. File integrity — all referenced files exist
 Output: PASS/FAIL to stdout, details to stderr.
 """
+
 import json
 import os
 import re
@@ -31,6 +32,7 @@ WEIGHTS = {"must-have": 1.0, "important": 0.7, "nice-to-have": 0.4}
 TOLERANCE = 0.005
 
 LOG_FILE = None
+
 
 def log(status, msg):
     if LOG_FILE:
@@ -128,8 +130,13 @@ def parse_matrix(task_dir):
         if not cells or is_separator(cells):
             continue
         low = [c.lower() for c in cells]
-        if (candidates is None and len(cells) >= 4
-                and low[0] == "req" and low[1] == "requirement" and low[2] == "priority"):
+        if (
+            candidates is None
+            and len(cells) >= 4
+            and low[0] == "req"
+            and low[1] == "requirement"
+            and low[2] == "priority"
+        ):
             candidates = cells[3:]
             continue
         if candidates is not None and re.fullmatch(r"R\d+", cells[0]):
@@ -161,25 +168,42 @@ def parse_ranking_table(comp_text):
             elif re.match(r"R\d+\b", c):
                 rule_match = re.match(r"R\d+", c)
                 w = re.search(r"[×x]\s*([0-9.]+)", c, re.IGNORECASE)
-                rule_cols.append((j, rule_match.group(0) if rule_match else c,
-                                  _to_float(w.group(1)) if w else None))
+                rule_cols.append(
+                    (
+                        j,
+                        rule_match.group(0) if rule_match else c,
+                        _to_float(w.group(1)) if w else None,
+                    )
+                )
         if not rule_cols:
             continue
         rows = {}
-        for data_line in comp_text.splitlines()[comp_text.splitlines().index(line) + 1:]:
+        for data_line in comp_text.splitlines()[
+            comp_text.splitlines().index(line) + 1 :
+        ]:
             dcells = split_row(data_line)
-            if not dcells or not data_line.strip().startswith("|") or is_separator(dcells):
+            if (
+                not dcells
+                or not data_line.strip().startswith("|")
+                or is_separator(dcells)
+            ):
                 if rows:
                     break
                 continue
             entry = {"cells": {}, "total": None}
             for j, rule_id, _declared in rule_cols:
-                entry["cells"][rule_id] = _to_float(dcells[j]) if j < len(dcells) else None
+                entry["cells"][rule_id] = (
+                    _to_float(dcells[j]) if j < len(dcells) else None
+                )
             if total_idx is not None and total_idx < len(dcells):
                 entry["total"] = _to_float(dcells[total_idx])
             rows[dcells[0]] = entry
-        return {"rule_cols": rule_cols, "total_idx": total_idx, "rank_idx": rank_idx,
-                "rows": rows}
+        return {
+            "rule_cols": rule_cols,
+            "total_idx": total_idx,
+            "rank_idx": rank_idx,
+            "rows": rows,
+        }
     return None
 
 
@@ -207,23 +231,35 @@ def check_validator_report(task_dir):
     report_file = Path(task_dir) / "validator-report.json"
     errors, warnings = [], []
     if not report_file.exists():
-        return (["validator-report.json not found in the task directory. "
-                 "Run the conformance guard (Phase 4.4) and write the report "
-                 "from templates/validator-report.template.json."], warnings)
+        return (
+            [
+                "validator-report.json not found in the task directory. "
+                "Run the conformance guard (Phase 4.4) and write the report "
+                "from templates/validator-report.template.json."
+            ],
+            warnings,
+        )
     try:
         report = json.loads(report_file.read_text())
     except json.JSONDecodeError as e:
         return [f"validator-report.json is not valid JSON: {e}"], warnings
     verdict = report.get("verdict")
     if verdict != "approved":
-        return ([f"validator-report.json verdict is {verdict!r}, expected 'approved'. "
-                 f"Fix the flagged ratings and rerun the guard until approved."], warnings)
+        return (
+            [
+                f"validator-report.json verdict is {verdict!r}, expected 'approved'. "
+                f"Fix the flagged ratings and rerun the guard until approved."
+            ],
+            warnings,
+        )
     for field in ("mode", "findings", "reasoning", "timestamp"):
         if field not in report:
             warnings.append(f"validator-report.json is missing the '{field}' field")
     if report.get("mode") == "peer-review" and not report.get("peerAgent"):
-        warnings.append("validator-report.json mode is 'peer-review' but 'peerAgent' "
-                        "does not name the peer agent")
+        warnings.append(
+            "validator-report.json mode is 'peer-review' but 'peerAgent' "
+            "does not name the peer agent"
+        )
     return errors, warnings
 
 
@@ -256,22 +292,28 @@ def main():
     if not matrix["rows"]:
         errors.append("No rated matrix rows found in comparison.md")
     if not candidates:
-        errors.append("No candidates found in comparison.md (header must read "
-                      "| Req | Requirement | Priority | ... |)")
+        errors.append(
+            "No candidates found in comparison.md (header must read "
+            "| Req | Requirement | Priority | ... |)"
+        )
 
     # 2. Rate every cell, collect claims and tier outcomes
-    ratings = {}       # candidate -> {rule_id: mark}
-    cell_text = {}     # (candidate, rule_id) -> raw cell
+    ratings = {}  # candidate -> {rule_id: mark}
+    cell_text = {}  # (candidate, rule_id) -> raw cell
     failed_rule_ids = set()
     marks_seen = {}
     for rule_id, priority_text, cells in matrix["rows"]:
         weight = normalize_priority(priority_text)
         if weight is None:
-            errors.append(f"Unknown priority '{priority_text}' on rule {rule_id} "
-                          f"(expected Must-have, Important or Nice-to-have)")
+            errors.append(
+                f"Unknown priority '{priority_text}' on rule {rule_id} "
+                f"(expected Must-have, Important or Nice-to-have)"
+            )
         if len(cells) != len(candidates):
-            errors.append(f"Matrix row {rule_id} has {len(cells)} candidate cells, "
-                          f"expected {len(candidates)}")
+            errors.append(
+                f"Matrix row {rule_id} has {len(cells)} candidate cells, "
+                f"expected {len(candidates)}"
+            )
         for cand, c in zip(candidates, cells, strict=False):
             mark = extract_mark(c)
             cell_text[(cand, rule_id)] = c
@@ -288,17 +330,24 @@ def main():
 
     # 3. Source tracing summary
     total_cells = sum(marks_seen.values())
-    sourced_cells = sum(1 for (cand, rule_id) in cell_text
-                        if re.search(r"\[([^\]]+)\]", cell_text[(cand, rule_id)]))
-    print(f"✅ {sourced_cells}/{total_cells} matrix cells carry a source reference "
-          f"({', '.join(f'{m}×{n}' for m, n in marks_seen.items()) or 'none'})")
+    sourced_cells = sum(
+        1
+        for (cand, rule_id) in cell_text
+        if re.search(r"\[([^\]]+)\]", cell_text[(cand, rule_id)])
+    )
+    print(
+        f"✅ {sourced_cells}/{total_cells} matrix cells carry a source reference "
+        f"({', '.join(f'{m}×{n}' for m, n in marks_seen.items()) or 'none'})"
+    )
 
     # 4. Tier rules — must-have ❌ eliminates, eliminated candidates are unranked
     eliminated = set()
     for cand, cand_marks in ratings.items():
         for rule_id, priority_text, _cells in matrix["rows"]:
-            if (normalize_priority(priority_text) == 1.0
-                    and cand_marks.get(rule_id) == "❌"):
+            if (
+                normalize_priority(priority_text) == 1.0
+                and cand_marks.get(rule_id) == "❌"
+            ):
                 eliminated.add(cand)
     for cand in candidates:
         if cand in eliminated:
@@ -307,7 +356,7 @@ def main():
     # 5. Completeness — every candidate has fact or meta files
     if candidates and (facts or meta):
         for cand in candidates:
-            slug = cand.replace('/', '_')
+            slug = cand.replace("/", "_")
             if slug not in facts and slug not in meta:
                 errors.append(f"No fact/meta files found for candidate: {cand}")
     print(f"✅ {len(facts)} fact files, {len(meta)} meta files loaded")
@@ -317,14 +366,18 @@ def main():
         ok, msg = check_gaps(task_dir, failed_rule_ids)
         if not ok:
             errors.append(f"Gap transparency: {msg}")
-    print(f"{'✅' if not any('Gap transparency' in e for e in errors) else '❌'} "
-          f"Gap transparency checked ({len(failed_rule_ids)} rules with ❌)")
+    print(
+        f"{'✅' if not any('Gap transparency' in e for e in errors) else '❌'} "
+        f"Gap transparency checked ({len(failed_rule_ids)} rules with ❌)"
+    )
 
     # 7. Score consistency — recompute weight x mark points, compare with the table
     ranking = parse_ranking_table(comp_text) if comp_text else None
     if ranking is None:
-        errors.append("Ranking score table not found in comparison.md "
-                      "(header must read | Repo | R... (xW) | ... | Total | Rank |)")
+        errors.append(
+            "Ranking score table not found in comparison.md "
+            "(header must read | Repo | R... (xW) | ... | Total | Rank |)"
+        )
     else:
         rule_ids = [rule_id for rule_id, _p, _c in matrix["rows"]]
         table_rules = [rule_id for _j, rule_id, _w in ranking["rule_cols"]]
@@ -336,25 +389,32 @@ def main():
             weight_by_rule[rule_id] = normalize_priority(priority_text)
         # Declared per-rule weight in the table header must match the matrix priority.
         for _j, rule_id, declared in ranking["rule_cols"]:
-            if rule_id in weight_by_rule and declared is not None \
-                    and weight_by_rule[rule_id] is not None \
-                    and abs(declared - weight_by_rule[rule_id]) > TOLERANCE:
-                errors.append(f"Ranking score table weight for {rule_id} is {declared} "
-                              f"but the matrix priority implies "
-                              f"{weight_by_rule[rule_id]}")
+            if (
+                rule_id in weight_by_rule
+                and declared is not None
+                and weight_by_rule[rule_id] is not None
+                and abs(declared - weight_by_rule[rule_id]) > TOLERANCE
+            ):
+                errors.append(
+                    f"Ranking score table weight for {rule_id} is {declared} "
+                    f"but the matrix priority implies "
+                    f"{weight_by_rule[rule_id]}"
+                )
 
         for cand in candidates:
             if cand not in ratings:
                 continue
             if cand in eliminated:
                 if cand in ranking["rows"]:
-                    errors.append(f"Eliminated candidate is ranked in the score "
-                                  f"table: {cand}")
+                    errors.append(
+                        f"Eliminated candidate is ranked in the score table: {cand}"
+                    )
                 continue
             row = ranking["rows"].get(cand)
             if row is None:
-                errors.append(f"Ranked candidate missing from the ranking score "
-                              f"table: {cand}")
+                errors.append(
+                    f"Ranked candidate missing from the ranking score table: {cand}"
+                )
                 continue
             expected_total = 0.0
             for rule_id, mark in ratings[cand].items():
@@ -365,25 +425,34 @@ def main():
                 expected_total += expected
                 got = row["cells"][rule_id]
                 if got is None:
-                    errors.append(f"Ranking score for {cand} / {rule_id} is not a "
-                                  f"number: expected {expected:.2f}")
+                    errors.append(
+                        f"Ranking score for {cand} / {rule_id} is not a "
+                        f"number: expected {expected:.2f}"
+                    )
                 elif abs(got - expected) > TOLERANCE:
-                    errors.append(f"Score mismatch: {cand} / {rule_id} — matrix mark "
-                                  f"{mark} x weight {weight} = {expected:.2f}, table "
-                                  f"says {got}")
+                    errors.append(
+                        f"Score mismatch: {cand} / {rule_id} — matrix mark "
+                        f"{mark} x weight {weight} = {expected:.2f}, table "
+                        f"says {got}"
+                    )
             expected_total = round(expected_total, 2)
             if ranking["total_idx"] is None:
                 errors.append("Ranking score table has no Total column")
             elif row["total"] is None:
-                errors.append(f"Ranking score total for {cand} is not a number: "
-                              f"expected {expected_total:.2f}")
+                errors.append(
+                    f"Ranking score total for {cand} is not a number: "
+                    f"expected {expected_total:.2f}"
+                )
             elif abs(row["total"] - expected_total) > TOLERANCE:
-                errors.append(f"Score mismatch: {cand} total — cells sum to "
-                              f"{expected_total:.2f}, table says {row['total']:.2f}")
+                errors.append(
+                    f"Score mismatch: {cand} total — cells sum to "
+                    f"{expected_total:.2f}, table says {row['total']:.2f}"
+                )
         for repo in ranking["rows"]:
             if repo not in candidates:
-                warnings.append(f"Ranking score table row '{repo}' is not a matrix "
-                                f"candidate")
+                warnings.append(
+                    f"Ranking score table row '{repo}' is not a matrix candidate"
+                )
 
     # 8. File integrity — check referenced files exist
     for c in cell_text.values():
@@ -397,8 +466,10 @@ def main():
     report_errors, report_warnings = check_validator_report(task_dir)
     errors.extend(report_errors)
     warnings.extend(report_warnings)
-    print(f"{'✅' if not report_errors else '❌'} Validator report checked "
-          f"(validator-report.json, verdict approved)")
+    print(
+        f"{'✅' if not report_errors else '❌'} Validator report checked "
+        f"(validator-report.json, verdict approved)"
+    )
 
     # Output
     print()
@@ -415,8 +486,11 @@ def main():
         if warnings:
             print("\nVALIDATION: PASS (with warnings)")
         else:
-            log("OK", f"PASS, {sourced_cells}/{total_cells} cells sourced, "
-                      f"0 errors, 0 warnings")
+            log(
+                "OK",
+                f"PASS, {sourced_cells}/{total_cells} cells sourced, "
+                f"0 errors, 0 warnings",
+            )
         print("\nVALIDATION: PASS")
         sys.exit(0)
 
